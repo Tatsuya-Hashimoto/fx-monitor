@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#0a0f1a" />
+  <title>USD/JPY レート</title>
+  <link rel="manifest" href="manifest.json" />
+  <style>
+    :root {
+      --bg:     #0a0f1a;
+      --surf:   #111827;
+      --surf2:  #0f172a;
+      --border: rgba(255,255,255,0.08);
+      --text:   #e2e8f0;
+      --muted:  #64748b;
+      --up:     #22c55e;
+      --down:   #ef4444;
+      --accent: #3b82f6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+      display: flex; flex-direction: column;
+    }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.92);
+      z-index: 300;
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px; backdrop-filter: blur(4px);
+    }
+    .modal-overlay.hidden { display: none; }
+    .modal-card {
+      background: var(--surf);
+      border: 1px solid rgba(59,130,246,0.45);
+      border-radius: 20px; padding: 28px 24px 22px;
+      width: 100%; max-width: 360px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.65);
+    }
+    .m-icon  { font-size: 34px; text-align: center; margin-bottom: 8px; }
+    .m-title { font-size: 16px; font-weight: 800; color: #fff; text-align: center; margin-bottom: 6px; }
+    .m-desc  { font-size: 12px; color: var(--muted); text-align: center; line-height: 1.75; margin-bottom: 18px; }
+    .m-desc a { color: var(--accent); }
+    .m-lbl   { font-size: 10px; font-weight: 700; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; margin-bottom: 7px; }
+    .m-wrap  { position: relative; margin-bottom: 8px; }
+    .m-input {
+      width: 100%; background: var(--surf2);
+      border: 1px solid var(--border); border-radius: 10px;
+      padding: 13px 44px 13px 14px; color: var(--text);
+      font-size: 13px; font-family: 'Courier New', monospace;
+      outline: none; transition: border-color 0.2s; -webkit-appearance: none;
+    }
+    .m-input:focus { border-color: rgba(59,130,246,0.6); }
+    .m-input::placeholder { color: #334155; font-family: -apple-system, sans-serif; }
+    .m-input.err { border-color: var(--down); }
+    .m-eye {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; color: var(--muted);
+      cursor: pointer; font-size: 16px; padding: 4px; line-height: 1;
+    }
+    .m-err  { font-size: 11px; color: var(--down); min-height: 16px; margin-bottom: 10px; }
+    .m-save {
+      width: 100%; padding: 13px;
+      background: linear-gradient(135deg, #1d4ed8, #1e40af);
+      border: none; border-radius: 10px; color: #fff;
+      font-size: 15px; font-weight: 700; cursor: pointer;
+      -webkit-appearance: none; box-shadow: 0 4px 16px rgba(29,78,216,0.4);
+    }
+    .m-save:active { opacity: 0.8; }
+
+    /* ── Header ── */
+    .header {
+      background: var(--surf2);
+      border-bottom: 1px solid var(--border);
+      padding: env(safe-area-inset-top, 44px) 16px 12px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .pair-lbl { font-size: 13px; font-weight: 800; color: var(--muted); letter-spacing: 2px; }
+    .gear-btn {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border); border-radius: 9px;
+      color: var(--muted); font-size: 16px; padding: 7px 9px;
+      cursor: pointer; -webkit-appearance: none; line-height: 1;
+    }
+    .gear-btn:active { background: rgba(255,255,255,0.12); }
+
+    /* ── Main rate area ── */
+    .rate-main {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 16px 20px; gap: 10px;
+    }
+    .rate-value {
+      font-size: clamp(56px, 20vw, 108px);
+      font-weight: 800; color: #fff;
+      letter-spacing: -2px; line-height: 1;
+      font-variant-numeric: tabular-nums;
+      transition: color 0.4s;
+    }
+    .rate-value.up   { color: var(--up); }
+    .rate-value.down { color: var(--down); }
+
+    .rate-change {
+      font-size: clamp(16px, 5vw, 30px);
+      font-weight: 600; font-variant-numeric: tabular-nums;
+    }
+    .rate-change.up      { color: var(--up); }
+    .rate-change.down    { color: var(--down); }
+    .rate-change.neutral { color: var(--muted); }
+
+    .rate-sub {
+      font-size: 12px; color: var(--muted);
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Stats ── */
+    .stats-row {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .stat-col {
+      background: var(--surf2);
+      padding: 14px 8px; text-align: center;
+      border-right: 1px solid var(--border);
+    }
+    .stat-col:last-child { border-right: none; }
+    .s-lbl { font-size: 9px; font-weight: 700; letter-spacing: 0.8px; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
+    .s-val { font-size: clamp(13px, 3.8vw, 20px); font-weight: 700; font-variant-numeric: tabular-nums; }
+    .s-val.up   { color: var(--up); }
+    .s-val.down { color: var(--down); }
+    .s-val.neu  { color: var(--text); }
+
+    /* ── Status bar ── */
+    .status-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 16px;
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+      background: var(--surf2);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .live-grp { display: flex; align-items: center; gap: 7px; }
+    .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+    .live-dot.on  { background: var(--up);   animation: pulse 2s infinite; }
+    .live-dot.err { background: var(--down); }
+    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+    .live-txt        { font-size: 12px; font-weight: 600; color: var(--muted); }
+    .live-txt.on     { color: var(--up); }
+    .live-txt.err    { color: var(--down); }
+
+    .status-right { display: flex; align-items: center; gap: 14px; }
+    .countdown    { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .wl-badge     { font-size: 11px; color: var(--muted); }
+    .wl-badge.on  { color: var(--accent); }
+  </style>
+</head>
+<body>
+
+  <!-- APIキーモーダル -->
+  <div class="modal-overlay hidden" id="modal">
+    <div class="modal-card">
+      <div class="m-icon">🔑</div>
+      <div class="m-title">Alpha Vantage APIキー設定</div>
+      <div class="m-desc">
+        無料キーは <a href="https://www.alphavantage.co/support/#api-key" target="_blank" rel="noopener">alphavantage.co</a> で取得できます。<br>
+        ※ 無料プランは <b style="color:#e2e8f0">1日25回</b> · 5回/分まで
+      </div>
+      <div class="m-lbl">APIキー</div>
+      <div class="m-wrap">
+        <input type="password" class="m-input" id="m-input"
+               placeholder="YOUR_API_KEY" autocomplete="off" spellcheck="false" />
+        <button class="m-eye" id="m-eye" onclick="toggleEye()" type="button">👁️</button>
+      </div>
+      <div class="m-err" id="m-err"></div>
+      <button class="m-save" onclick="saveKey()">保存して表示開始</button>
+    </div>
+  </div>
+
+  <!-- ヘッダー -->
+  <div class="header">
+    <div class="pair-lbl">USD / JPY</div>
+    <button class="gear-btn" onclick="showModal()">⚙️</button>
+  </div>
+
+  <!-- 大画面レート -->
+  <div class="rate-main">
+    <div class="rate-value" id="rate-val">---.---</div>
+    <div class="rate-change neutral" id="rate-chg">--- (+-.--% 始値比)</div>
+    <div class="rate-sub" id="rate-sub">最終更新: ---</div>
+  </div>
+
+  <!-- 統計4項目 -->
+  <div class="stats-row">
+    <div class="stat-col">
+      <div class="s-lbl">始値</div>
+      <div class="s-val neu" id="s-open">---</div>
+    </div>
+    <div class="stat-col">
+      <div class="s-lbl">高値</div>
+      <div class="s-val up"  id="s-high">---</div>
+    </div>
+    <div class="stat-col">
+      <div class="s-lbl">安値</div>
+      <div class="s-val down" id="s-low">---</div>
+    </div>
+    <div class="stat-col">
+      <div class="s-lbl">前日終値</div>
+      <div class="s-val neu" id="s-prev">---</div>
+    </div>
+  </div>
+
+  <!-- ステータスバー -->
+  <div class="status-bar">
+    <div class="live-grp">
+      <div class="live-dot" id="live-dot"></div>
+      <span class="live-txt" id="live-txt">待機中</span>
+    </div>
+    <div class="status-right">
+      <span class="countdown" id="countdown">---</span>
+      <span class="wl-badge" id="wl-badge">🔓 ---</span>
+    </div>
+  </div>
+
+  <script>
+    // ── APIキー ────────────────────────────────────────────
+    const KEY = 'fx_api_key';
+    const loadKey = () => localStorage.getItem(KEY) || '';
+
+    function showModal() {
+      document.getElementById('m-input').value = '';
+      document.getElementById('m-err').textContent = '';
+      document.getElementById('m-input').classList.remove('err');
+      document.getElementById('modal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('m-input').focus(), 80);
+    }
+    function hideModal() { document.getElementById('modal').classList.add('hidden'); }
+
+    function saveKey() {
+      const k = document.getElementById('m-input').value.trim();
+      if (!k) {
+        document.getElementById('m-input').classList.add('err');
+        document.getElementById('m-err').textContent = 'APIキーを入力してください';
+        return;
+      }
+      localStorage.setItem(KEY, k);
+      hideModal();
+      startCycle();
+    }
+
+    function toggleEye() {
+      const inp = document.getElementById('m-input');
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+      document.getElementById('m-eye').textContent = inp.type === 'password' ? '👁️' : '🙈';
+    }
+    document.getElementById('m-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') saveKey();
+    });
+
+    // ── WakeLock ───────────────────────────────────────────
+    let wakeLock = null;
+
+    async function acquireWakeLock() {
+      if (!('wakeLock' in navigator)) { setWl(false, '非対応'); return; }
+      try {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => { wakeLock = null; setWl(false, '解除'); });
+        setWl(true, '常時表示');
+      } catch (e) {
+        setWl(false, '取得失敗');
+      }
+    }
+
+    function setWl(on, label) {
+      const el = document.getElementById('wl-badge');
+      el.textContent = (on ? '🔒 ' : '🔓 ') + label;
+      el.className   = 'wl-badge' + (on ? ' on' : '');
+    }
+
+    document.addEventListener('visibilitychange', async () => {
+      if (document.visibilityState === 'visible' && !wakeLock) await acquireWakeLock();
+    });
+
+    // ── 自動更新サイクル ────────────────────────────────────
+    const REFRESH_SEC = 60;
+    let countdown = REFRESH_SEC;
+    let cycleTimer = null;
+
+    function setLive(state) {
+      const dot = document.getElementById('live-dot');
+      const txt = document.getElementById('live-txt');
+      if (state === 'on')  { dot.className = 'live-dot on';  txt.className = 'live-txt on';  txt.textContent = 'LIVE'; }
+      if (state === 'err') { dot.className = 'live-dot err'; txt.className = 'live-txt err'; txt.textContent = 'エラー'; }
+      if (state === 'loading') { dot.className = 'live-dot'; txt.className = 'live-txt'; txt.textContent = '取得中…'; }
+    }
+
+    function startCycle() {
+      if (cycleTimer) clearInterval(cycleTimer);
+      countdown = 0;
+      fetchData();
+      cycleTimer = setInterval(() => {
+        countdown--;
+        if (countdown <= 0) { countdown = REFRESH_SEC; fetchData(); }
+        document.getElementById('countdown').textContent =
+          countdown > 0 ? `次回更新 ${countdown}秒` : '更新中…';
+      }, 1000);
+    }
+
+    // ── データ取得 ──────────────────────────────────────────
+    const fmt = (v, d = 3) => v == null ? '---' : v.toFixed(d);
+
+    async function fetchData() {
+      const apiKey = loadKey();
+      if (!apiKey) { showModal(); return; }
+      setLive('loading');
+
+      try {
+        const url = 'https://www.alphavantage.co/query?function=FX_INTRADAY' +
+                    '&from_symbol=USD&to_symbol=JPY&interval=1min&outputsize=compact&apikey=' + apiKey;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const raw = await res.json();
+
+        if (raw['Error Message']) throw new Error('APIキーが無効です。⚙️ から再設定してください');
+        if (raw['Note'])          throw new Error('レート制限超過（5回/分）。1分後に再試行します');
+        if (raw['Information'])   throw new Error('1日の上限（25回）に達しました');
+
+        const series = raw['Time Series FX (1min)'];
+        if (!series) throw new Error('データが取得できませんでした');
+
+        const bars = Object.entries(series)
+          .map(([t, o]) => ({
+            ts: new Date(t.replace(' ', 'T') + 'Z').getTime(),
+            o:  parseFloat(o['1. open']),
+            h:  parseFloat(o['2. high']),
+            l:  parseFloat(o['3. low']),
+            c:  parseFloat(o['4. close']),
+          }))
+          .sort((a, b) => a.ts - b.ts);
+
+        renderStats(bars);
+        setLive('on');
+        document.getElementById('rate-sub').textContent =
+          '最終更新: ' + new Date().toLocaleTimeString('ja-JP');
+
+      } catch (e) {
+        setLive('err');
+        document.getElementById('rate-sub').textContent = '⚠️ ' + e.message;
+      }
+    }
+
+    function renderStats(bars) {
+      const latest = bars[bars.length - 1];
+      const cur = latest.c;
+
+      const now = new Date();
+      const todayUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+      const today = bars.filter(b => b.ts >= todayUTC);
+      const prev  = bars.filter(b => b.ts <  todayUTC);
+      const sess  = today.length > 0 ? today : bars;
+
+      const open  = sess[0].o;
+      const high  = Math.max(...sess.map(b => b.h));
+      const low   = Math.min(...sess.map(b => b.l));
+      const prevC = prev.length > 0 ? prev[prev.length - 1].c : null;
+
+      const diff    = cur - open;
+      const diffPct = (diff / open) * 100;
+      const sign    = diff >= 0 ? '+' : '';
+      const dir     = diff > 0 ? 'up' : diff < 0 ? 'down' : 'neutral';
+
+      document.getElementById('rate-val').textContent = fmt(cur);
+      document.getElementById('rate-val').className   = 'rate-value ' + dir;
+      document.getElementById('rate-chg').textContent =
+        `${sign}${fmt(diff)} (${sign}${diffPct.toFixed(2)}% 始値比)`;
+      document.getElementById('rate-chg').className = 'rate-change ' + dir;
+
+      document.getElementById('s-open').textContent = fmt(open);
+      document.getElementById('s-high').textContent = fmt(high);
+      document.getElementById('s-low').textContent  = fmt(low);
+      document.getElementById('s-prev').textContent = fmt(prevC);
+    }
+
+    // ── 起動 ───────────────────────────────────────────────
+    acquireWakeLock();
+    if (!loadKey()) {
+      showModal();
+    } else {
+      startCycle();
+    }
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () =>
+        navigator.serviceWorker.register('./sw.js').catch(() => {})
+      );
+    }
+  </script>
+</body>
+</html>
