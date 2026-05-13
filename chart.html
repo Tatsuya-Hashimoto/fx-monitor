@@ -7,7 +7,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="theme-color" content="#0a0f1a" />
   <title>USD/JPY チャート</title>
-  <link rel="manifest" href="manifest.json" />
+  <link rel="manifest" href="chart.manifest.json" />
+  <link rel="apple-touch-icon" href="icon.png" />
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
@@ -168,7 +169,7 @@
     </div>
   </div>
 
-  <!-- ツールバー -->
+  <!-- ツールバー（時間足切り替え） -->
   <div class="toolbar">
     <button class="tf-btn active" id="tf-1min"  onclick="setTf('1min')">1分足</button>
     <button class="tf-btn"        id="tf-15min" onclick="setTf('15min')">15分足</button>
@@ -288,7 +289,7 @@
       err.textContent = msg;
     }
 
-    // ── 自動更新サイクル ────────────────────────────────────
+    // ── 自動更新サイクル（1分ごと） ───────────────────────────
     const REFRESH_SEC = 60;
     let countdown = REFRESH_SEC;
     let cycleTimer = null;
