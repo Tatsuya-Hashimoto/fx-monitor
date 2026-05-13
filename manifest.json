@@ -1,6 +1,6 @@
 {
-  "name": "USD/JPY FX Monitor",
-  "short_name": "FX Monitor",
+  "name": "FX Monitor",
+  "short_name": "FXレート",
   "description": "USD/JPY リアルタイム ローソク足チャート",
   "start_url": "./",
   "display": "standalone",
