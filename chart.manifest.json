@@ -1,0 +1,14 @@
+{
+  "name": "FXチャート",
+  "short_name": "FXチャート",
+  "description": "USD/JPY ローソク足チャート",
+  "start_url": "chart.html",
+  "display": "standalone",
+  "background_color": "#0a0f1a",
+  "theme_color": "#0a0f1a",
+  "orientation": "landscape-primary",
+  "icons": [
+    { "src": "icon.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
