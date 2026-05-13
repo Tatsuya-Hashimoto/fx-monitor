@@ -7,7 +7,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="theme-color" content="#0a0f1a" />
   <title>USD/JPY レート</title>
-  <link rel="manifest" href="manifest.json" />
+  <link rel="manifest" href="rate.manifest.json" />
+  <link rel="apple-touch-icon" href="icon.png" />
   <style>
     :root {
       --bg:     #0a0f1a;
@@ -290,7 +291,7 @@
       if (document.visibilityState === 'visible' && !wakeLock) await acquireWakeLock();
     });
 
-    // ── 自動更新サイクル ────────────────────────────────────
+    // ── 自動更新サイクル（1分ごと） ───────────────────────────
     const REFRESH_SEC = 60;
     let countdown = REFRESH_SEC;
     let cycleTimer = null;
@@ -298,9 +299,9 @@
     function setLive(state) {
       const dot = document.getElementById('live-dot');
       const txt = document.getElementById('live-txt');
-      if (state === 'on')  { dot.className = 'live-dot on';  txt.className = 'live-txt on';  txt.textContent = 'LIVE'; }
-      if (state === 'err') { dot.className = 'live-dot err'; txt.className = 'live-txt err'; txt.textContent = 'エラー'; }
-      if (state === 'loading') { dot.className = 'live-dot'; txt.className = 'live-txt'; txt.textContent = '取得中…'; }
+      if (state === 'on')      { dot.className = 'live-dot on';  txt.className = 'live-txt on';  txt.textContent = 'LIVE'; }
+      if (state === 'err')     { dot.className = 'live-dot err'; txt.className = 'live-txt err'; txt.textContent = 'エラー'; }
+      if (state === 'loading') { dot.className = 'live-dot';     txt.className = 'live-txt';     txt.textContent = '取得中…'; }
     }
 
     function startCycle() {
